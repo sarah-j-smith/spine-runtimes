@@ -33,7 +33,7 @@
 #import "cocos2d.h"
 
 /** Draws a skeleton. */
-@interface CCSkeleton : CCNodeRGBA<CCBlendProtocol> {
+@interface CCSkeleton : CCNode<CCBlendProtocol> {
 	Skeleton* _skeleton;
 	Bone* _rootBone;
 	float _timeScale;

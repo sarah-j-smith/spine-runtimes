@@ -31,6 +31,8 @@
 #import <spine/CCSkeleton.h>
 #import <spine/spine-cocos2d-iphone.h>
 
+#import <CCDrawingPrimitives.h>
+
 @interface CCSkeleton (Private)
 - (void) initialize:(SkeletonData*)skeletonData ownsSkeletonData:(bool)ownsSkeletonData;
 @end
@@ -67,8 +69,7 @@
 
 	_timeScale = 1;
 
-	[self setShaderProgram:[[CCShaderCache sharedShaderCache] programForKey:kCCShader_PositionTextureColor]];
-	[self scheduleUpdate];
+    _shaderProgram = [[CCShaderCache sharedShaderCache] programForKey:kCCShader_PositionTextureColor];
 }
 
 - (id) initWithData:(SkeletonData*)skeletonData ownsSkeletonData:(bool)ownsSkeletonData {
@@ -87,7 +88,8 @@
 	if (!self) return nil;
 
 	SkeletonJson* json = SkeletonJson_create(atlas);
-	json->scale = scale == 0 ? (1 / CC_CONTENT_SCALE_FACTOR()) : scale;
+    CGFloat contentScaleFactor = [[CCDirector sharedDirector] contentScaleFactor];
+	json->scale = scale == 0 ? (1 / contentScaleFactor) : scale;
 	SkeletonData* skeletonData = SkeletonJson_readSkeletonDataFile(json, [skeletonDataFile UTF8String]);
 	NSAssert(skeletonData, ([NSString stringWithFormat:@"Error reading skeleton data file: %@\nError: %s", skeletonDataFile, json->error]));
 	SkeletonJson_dispose(json);
@@ -101,13 +103,16 @@
 - (id) initWithFile:(NSString*)skeletonDataFile atlasFile:(NSString*)atlasFile scale:(float)scale {
 	self = [super init];
 	if (!self) return nil;
+    
+    _atlas = Atlas_createFromFile([atlasFile UTF8String], self);
 
-	_atlas = Atlas_readAtlasFile([atlasFile UTF8String]);
+//	_atlas = Atlas_readAtlasFile([atlasFile UTF8String]);
 	NSAssert(_atlas, ([NSString stringWithFormat:@"Error reading atlas file: %@", atlasFile]));
 	if (!_atlas) return 0;
 
 	SkeletonJson* json = SkeletonJson_create(_atlas);
-	json->scale = scale == 0 ? (1 / CC_CONTENT_SCALE_FACTOR()) : scale;
+    CGFloat contentScaleFactor = [[CCDirector sharedDirector] contentScaleFactor];
+	json->scale = scale == 0 ? (1 / contentScaleFactor) : scale;
 	SkeletonData* skeletonData = SkeletonJson_readSkeletonDataFile(json, [skeletonDataFile UTF8String]);
 	NSAssert(skeletonData, ([NSString stringWithFormat:@"Error reading skeleton data file: %@\nError: %s", skeletonDataFile, json->error]));
 	SkeletonJson_dispose(json);
@@ -125,7 +130,7 @@
 	[super dealloc];
 }
 
-- (void) update:(ccTime)deltaTime {
+- (void) update:(CCTime)deltaTime {
 	Skeleton_update(_skeleton, deltaTime * _timeScale);
 }
 
@@ -133,7 +138,7 @@
 	CC_NODE_DRAW_SETUP();
 
 	ccGLBlendFunc(_blendFunc.src, _blendFunc.dst);
-	ccColor3B color = self.color;
+	ccColor3B color = [[self color] ccColor3b];
 	_skeleton->r = color.r / (float)255;
 	_skeleton->g = color.g / (float)255;
 	_skeleton->b = color.b / (float)255;
