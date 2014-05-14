@@ -27,7 +27,7 @@
 	animationNode.timeScale = 0.3f;
 	animationNode.debugBones = true;
 
-	CGSize windowSize = [[CCDirector sharedDirector] winSize];
+    CGSize windowSize = [[CCDirector sharedDirector] viewSize];
 	[animationNode setPosition:ccp(windowSize.width / 2, 20)];
 	[self addChild:animationNode];
 
