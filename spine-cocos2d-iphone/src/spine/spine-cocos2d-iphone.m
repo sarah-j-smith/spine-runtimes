@@ -66,6 +66,10 @@ void RegionAttachment_updateQuad (RegionAttachment* self, Slot* slot, ccV3F_C4B_
 		b *= normalizedAlpha;
 	}
 	GLubyte a = normalizedAlpha * 255;
+   
+    /// TODO: fix this for Cocos v3 updated color calculations
+    r = 255; g = 255; b = 255; a = 255;
+
 	quad->bl.colors.r = r;
 	quad->bl.colors.g = g;
 	quad->bl.colors.b = b;
