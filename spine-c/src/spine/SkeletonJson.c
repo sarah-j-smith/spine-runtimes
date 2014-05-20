@@ -227,7 +227,7 @@ static spAnimation* _spSkeletonJson_readAnimation (spSkeletonJson* self, Json* r
 			Json* timelineArray;
 			for (timelineArray = slotMap->child; timelineArray; timelineArray = timelineArray->next) {
 				Json* frame;
-				int verticesCount;
+				int verticesCount = 0;
 				float* tempVertices;
 				spFFDTimeline *timeline;
 
@@ -549,7 +549,6 @@ spSkeletonData* spSkeletonJson_readSkeletonData (spSkeletonJson* self, const cha
 							mesh->triangles[i] = entry->valueInt;
 
 						entry = Json_getItem(attachmentMap, "uvs");
-						mesh->uvsCount = entry->size;
 						mesh->regionUVs = MALLOC(float, entry->size);
 						for (entry = entry->child, i = 0; entry; entry = entry->next, ++i)
 							mesh->regionUVs[i] = entry->valueFloat;
