@@ -1,4 +1,38 @@
 ﻿#pragma warning disable 0219
+/******************************************************************************
+ * Spine Runtimes Software License
+ * Version 2.1
+ * 
+ * Copyright (c) 2013, Esoteric Software
+ * All rights reserved.
+ * 
+ * You are granted a perpetual, non-exclusive, non-sublicensable and
+ * non-transferable license to install, execute and perform the Spine Runtimes
+ * Software (the "Software") solely for internal use. Without the written
+ * permission of Esoteric Software (typically granted by licensing Spine), you
+ * may not (a) modify, translate, adapt or otherwise create derivative works,
+ * improvements of the Software or develop new applications using the Software
+ * or (b) remove, delete, alter or obscure any trademarks or any copyright,
+ * trademark, patent or other intellectual property or proprietary rights
+ * notices on or in the Software, including any copy thereof. Redistributions
+ * in binary or source form must include this license and terms.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY ESOTERIC SOFTWARE "AS IS" AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
+ * EVENT SHALL ESOTERIC SOFTARE BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
+
+/*****************************************************************************
+ * Spine Editor Utilities created by Mitch Thompson
+ * Full irrevocable rights and permissions granted to Esoteric Software
+*****************************************************************************/
 
 using UnityEngine;
 using UnityEditor;
@@ -15,6 +49,7 @@ public class SpineEditorUtilities : AssetPostprocessor {
 		public static Texture2D skeleton;
 		public static Texture2D nullBone;
 		public static Texture2D bone;
+		public static Texture2D poseBones;
 		public static Texture2D boneNib;
 		public static Texture2D slot;
 		public static Texture2D skinPlaceholder;
@@ -27,6 +62,11 @@ public class SpineEditorUtilities : AssetPostprocessor {
 		public static Texture2D animationRoot;
 		public static Texture2D spine;
 		public static Texture2D _event;
+		public static Texture2D constraintNib;
+		public static Texture2D warning;
+		public static Texture2D skeletonUtility;
+		public static Texture2D hingeChain;
+		public static Texture2D subMeshRenderer;
 
 		public static Mesh boneMesh{
 			get{
@@ -48,8 +88,14 @@ public class SpineEditorUtilities : AssetPostprocessor {
 		public static Material boneMaterial{
 			get{
 				if(_boneMaterial == null){
+#if UNITY_4_3
+					_boneMaterial = new Material(Shader.Find("Particles/Alpha Blended"));
+					_boneMaterial.SetColor("_TintColor", new Color(0.4f, 0.4f, 0.4f, 0.25f));
+#else
 					_boneMaterial = new Material(Shader.Find("Spine/Bones"));
 					_boneMaterial.SetColor("_Color", new Color(0.4f, 0.4f, 0.4f, 0.25f));
+#endif
+
 				}
 
 				return _boneMaterial;
@@ -61,6 +107,7 @@ public class SpineEditorUtilities : AssetPostprocessor {
 			skeleton = (Texture2D)AssetDatabase.LoadMainAssetAtPath( SpineEditorUtilities.editorGUIPath + "/icon-skeleton.png");
 			nullBone = (Texture2D)AssetDatabase.LoadMainAssetAtPath( SpineEditorUtilities.editorGUIPath + "/icon-null.png");
 			bone = (Texture2D)AssetDatabase.LoadMainAssetAtPath( SpineEditorUtilities.editorGUIPath + "/icon-bone.png");
+			poseBones = (Texture2D)AssetDatabase.LoadMainAssetAtPath( SpineEditorUtilities.editorGUIPath + "/icon-poseBones.png");
 			boneNib = (Texture2D)AssetDatabase.LoadMainAssetAtPath( SpineEditorUtilities.editorGUIPath + "/icon-boneNib.png");
 			slot = (Texture2D)AssetDatabase.LoadMainAssetAtPath( SpineEditorUtilities.editorGUIPath + "/icon-slot.png");
 			skinPlaceholder = (Texture2D)AssetDatabase.LoadMainAssetAtPath( SpineEditorUtilities.editorGUIPath + "/icon-skinPlaceholder.png");
@@ -73,6 +120,12 @@ public class SpineEditorUtilities : AssetPostprocessor {
 			animationRoot = (Texture2D)AssetDatabase.LoadMainAssetAtPath( SpineEditorUtilities.editorGUIPath + "/icon-animationRoot.png");
 			spine = (Texture2D)AssetDatabase.LoadMainAssetAtPath( SpineEditorUtilities.editorGUIPath + "/icon-spine.png");
 			_event = (Texture2D)AssetDatabase.LoadMainAssetAtPath( SpineEditorUtilities.editorGUIPath + "/icon-event.png");
+			constraintNib = (Texture2D)AssetDatabase.LoadMainAssetAtPath( SpineEditorUtilities.editorGUIPath + "/icon-constraintNib.png");
+			warning = (Texture2D)AssetDatabase.LoadMainAssetAtPath( SpineEditorUtilities.editorGUIPath + "/icon-warning.png");
+			skeletonUtility = (Texture2D)AssetDatabase.LoadMainAssetAtPath( SpineEditorUtilities.editorGUIPath + "/icon-skeletonUtility.png");
+			hingeChain = (Texture2D)AssetDatabase.LoadMainAssetAtPath( SpineEditorUtilities.editorGUIPath + "/icon-hingeChain.png");
+			subMeshRenderer = (Texture2D)AssetDatabase.LoadMainAssetAtPath( SpineEditorUtilities.editorGUIPath + "/icon-subMeshRenderer.png");
+
 		}
 
 	}
@@ -81,8 +134,9 @@ public class SpineEditorUtilities : AssetPostprocessor {
 
 	public static string editorPath = "";
 	public static string editorGUIPath = "";
-
-	static List<int> skeletonRendererInstanceIDs;
+	
+	static Dictionary<int, GameObject> skeletonRendererTable;
+	static Dictionary<int, SkeletonUtilityBone> skeletonUtilityBoneTable;
 
 	public static float defaultScale = 0.01f;
 	public static float defaultMix = 0.2f;
@@ -96,7 +150,8 @@ public class SpineEditorUtilities : AssetPostprocessor {
 
 		Icons.Initialize();
 
-		skeletonRendererInstanceIDs = new List<int>();
+		skeletonRendererTable = new Dictionary<int, GameObject>();
+		skeletonUtilityBoneTable = new Dictionary<int, SkeletonUtilityBone>();
 
 		EditorApplication.hierarchyWindowChanged += HierarchyWindowChanged;
 		EditorApplication.hierarchyWindowItemOnGUI += HierarchyWindowItemOnGUI;
@@ -105,22 +160,50 @@ public class SpineEditorUtilities : AssetPostprocessor {
 	}
 
 	static void HierarchyWindowChanged(){
-		skeletonRendererInstanceIDs.Clear();
+		skeletonRendererTable.Clear();
+		skeletonUtilityBoneTable.Clear();
 
 		SkeletonRenderer[] arr = Object.FindObjectsOfType<SkeletonRenderer>();
 
 		foreach(SkeletonRenderer r in arr)
-			skeletonRendererInstanceIDs.Add(r.gameObject.GetInstanceID());
+			skeletonRendererTable.Add( r.gameObject.GetInstanceID(), r.gameObject );
+
+		SkeletonUtilityBone[] boneArr = Object.FindObjectsOfType<SkeletonUtilityBone>();
+		foreach(SkeletonUtilityBone b in boneArr)
+			skeletonUtilityBoneTable.Add(b.gameObject.GetInstanceID(), b);
 	}
 
 	static void HierarchyWindowItemOnGUI(int instanceId, Rect selectionRect){
-		if(skeletonRendererInstanceIDs.Contains(instanceId)){
+		if(skeletonRendererTable.ContainsKey(instanceId)){
 			Rect r = new Rect (selectionRect); 
 			r.x = r.width - 15;
 			r.width = 15;
 
 			GUI.Label(r, Icons.spine);
 		}
+		else if(skeletonUtilityBoneTable.ContainsKey(instanceId)){
+			Rect r = new Rect (selectionRect); 
+			r.x -= 26;
+
+			if(skeletonUtilityBoneTable[instanceId] != null){
+				if( skeletonUtilityBoneTable[instanceId].transform.childCount == 0 )
+					r.x += 13;
+				
+				r.y += 2;
+
+				r.width = 13;
+				r.height = 13;
+
+				if( skeletonUtilityBoneTable[instanceId].mode == SkeletonUtilityBone.Mode.Follow ){
+					GUI.DrawTexture(r, Icons.bone);
+				}
+				else{
+					GUI.DrawTexture(r, Icons.poseBones);
+				}
+			}
+
+		}
+
 	}
 	
 	[MenuItem("Assets/Spine/Ingest")]
@@ -186,15 +269,23 @@ public class SpineEditorUtilities : AssetPostprocessor {
 
 					sharedAtlas = data.atlasAsset;
 
-					SkeletonAnimation anim = SpawnAnimatedSkeleton(data);
+
 					string dir = Path.GetDirectoryName(Path.GetDirectoryName(AssetDatabase.GetAssetPath(data)));
 					string prefabPath = Path.Combine(dir, data.skeletonJSON.name + ".prefab").Replace("\\", "/");
-					PrefabUtility.CreatePrefab(prefabPath, anim.gameObject, ReplacePrefabOptions.ReplaceNameBased);
 
-					if(EditorApplication.isPlaying)
-						GameObject.Destroy(anim.gameObject);
-					else
-						GameObject.DestroyImmediate(anim.gameObject);
+					if(File.Exists(prefabPath) == false){
+						SkeletonAnimation anim = SpawnAnimatedSkeleton(data);
+						PrefabUtility.CreatePrefab(prefabPath, anim.gameObject, ReplacePrefabOptions.ReplaceNameBased);
+						if(EditorApplication.isPlaying)
+							GameObject.Destroy(anim.gameObject);
+						else
+							GameObject.DestroyImmediate(anim.gameObject);
+					}
+					else{
+
+					}
+
+
 				}
 			}
 		}
@@ -255,7 +346,6 @@ public class SpineEditorUtilities : AssetPostprocessor {
 							path = path.Replace("\\", "/");
 							path = path.Replace(Application.dataPath.Replace("\\", "/"), "Assets");
 							atlasText = (TextAsset)AssetDatabase.LoadAssetAtPath(path, typeof(TextAsset));
-//							Debug.Log("Atlas Path: " + path);
 						}
 					}
 
@@ -280,13 +370,19 @@ public class SpineEditorUtilities : AssetPostprocessor {
 
 		string atlasPath = assetPath + "/" + primaryName + "_Atlas.asset";
 
-		if(File.Exists(atlasPath))
-			return (AtlasAsset)AssetDatabase.LoadAssetAtPath(atlasPath, typeof(AtlasAsset));
+		AtlasAsset atlasAsset = (AtlasAsset)AssetDatabase.LoadAssetAtPath(atlasPath, typeof(AtlasAsset));
 
-		AtlasAsset atlasAsset = AtlasAsset.CreateInstance<AtlasAsset>();
+
+		if(atlasAsset == null)
+			atlasAsset = AtlasAsset.CreateInstance<AtlasAsset>();
+
 		atlasAsset.atlasFile = atlasText;
-		
-		string[] atlasLines = atlasText.text.Split('\n');
+
+        //strip CR
+        string atlasStr = atlasText.text;
+        atlasStr = atlasStr.Replace("\r", "");
+
+		string[] atlasLines = atlasStr.Split('\n');
 		List<string> pageFiles = new List<string>();
 		for(int i = 0; i < atlasLines.Length-1; i++){
 			if(atlasLines[i].Length == 0)
@@ -302,6 +398,8 @@ public class SpineEditorUtilities : AssetPostprocessor {
 			TextureImporter texImporter = (TextureImporter)TextureImporter.GetAtPath(texturePath);
 			texImporter.textureFormat = TextureImporterFormat.AutomaticTruecolor;
 			texImporter.mipmapEnabled = false;
+            texImporter.maxTextureSize = 2048;
+
 			EditorUtility.SetDirty(texImporter);
 			AssetDatabase.ImportAsset(texturePath);
 			AssetDatabase.SaveAssets();
@@ -313,18 +411,26 @@ public class SpineEditorUtilities : AssetPostprocessor {
 				pageName = "Material";
 			
 			string materialPath = assetPath + "/" + primaryName + "_" + pageName + ".mat";
-			
-			Material mat = new Material(Shader.Find(defaultShader));
+			Material mat = (Material)AssetDatabase.LoadAssetAtPath(materialPath, typeof(Material));
+
+			if(mat == null){
+			 	mat = new Material(Shader.Find(defaultShader));
+				AssetDatabase.CreateAsset(mat, materialPath);
+			}
 			
 			mat.mainTexture = texture;
-			
-			AssetDatabase.CreateAsset(mat, materialPath);
+			EditorUtility.SetDirty(mat);
+
 			AssetDatabase.SaveAssets();
 			
 			atlasAsset.materials[i] = mat;
 		}
-		
-		AssetDatabase.CreateAsset(atlasAsset, atlasPath);
+
+		if(AssetDatabase.GetAssetPath( atlasAsset ) == "")
+			AssetDatabase.CreateAsset(atlasAsset, atlasPath);
+		else
+			atlasAsset.Reset();
+
 		AssetDatabase.SaveAssets();
 
 		return (AtlasAsset)AssetDatabase.LoadAssetAtPath(atlasPath, typeof(AtlasAsset));
@@ -335,20 +441,28 @@ public class SpineEditorUtilities : AssetPostprocessor {
 
 		string primaryName = Path.GetFileNameWithoutExtension(spineJson.name);
 		string assetPath = Path.GetDirectoryName( AssetDatabase.GetAssetPath(spineJson));
+		string filePath = assetPath + "/" + primaryName + "_SkeletonData.asset";
 
 		if(spineJson != null && atlasAsset != null){
 
-			SkeletonDataAsset skelDataAsset = SkeletonDataAsset.CreateInstance<SkeletonDataAsset>();
-			skelDataAsset.atlasAsset = atlasAsset;
-			skelDataAsset.skeletonJSON = spineJson;
-			skelDataAsset.fromAnimation = new string[0];
-			skelDataAsset.toAnimation = new string[0];
-			skelDataAsset.duration = new float[0];
-			skelDataAsset.defaultMix = defaultMix;
-			skelDataAsset.scale = defaultScale;
-
-			AssetDatabase.CreateAsset(skelDataAsset, assetPath + "/" + primaryName + "_SkeletonData.asset");
-			AssetDatabase.SaveAssets();
+			SkeletonDataAsset skelDataAsset = (SkeletonDataAsset)AssetDatabase.LoadAssetAtPath(filePath, typeof(SkeletonDataAsset));
+			if(skelDataAsset == null){
+				skelDataAsset = SkeletonDataAsset.CreateInstance<SkeletonDataAsset>();
+				skelDataAsset.atlasAsset = atlasAsset;
+				skelDataAsset.skeletonJSON = spineJson;
+				skelDataAsset.fromAnimation = new string[0];
+				skelDataAsset.toAnimation = new string[0];
+				skelDataAsset.duration = new float[0];
+				skelDataAsset.defaultMix = defaultMix;
+				skelDataAsset.scale = defaultScale;
+				
+				AssetDatabase.CreateAsset(skelDataAsset, filePath);
+				AssetDatabase.SaveAssets();
+			}
+			else{
+				skelDataAsset.Reset();
+				skelDataAsset.GetSkeletonData(true);
+			}
 
 			return skelDataAsset;
 		}
@@ -391,7 +505,7 @@ public class SpineEditorUtilities : AssetPostprocessor {
 		return SpawnAnimatedSkeleton(skeletonDataAsset, skeletonDataAsset.GetSkeletonData(true).FindSkin(skinName));
 	}
 
-	public static SkeletonAnimation SpawnAnimatedSkeleton(SkeletonDataAsset skeletonDataAsset, Skin skin = null){
+		public static SkeletonAnimation SpawnAnimatedSkeleton(SkeletonDataAsset skeletonDataAsset, Skin skin = null){
 		
 		GameObject go = new GameObject(skeletonDataAsset.name.Replace("_SkeletonData", ""), typeof(MeshFilter), typeof(MeshRenderer), typeof(SkeletonAnimation));
 		SkeletonAnimation anim = go.GetComponent<SkeletonAnimation>();
@@ -408,8 +522,19 @@ public class SpineEditorUtilities : AssetPostprocessor {
 
 		anim.calculateNormals = requiresNormals;
 
+		SkeletonData data = skeletonDataAsset.GetSkeletonData(true);
+
+		if(data == null){
+			string reloadAtlasPath = AssetDatabase.GetAssetPath( skeletonDataAsset.atlasAsset );
+			skeletonDataAsset.atlasAsset = (AtlasAsset)AssetDatabase.LoadAssetAtPath( reloadAtlasPath, typeof(AtlasAsset));
+			data = skeletonDataAsset.GetSkeletonData(true);
+		}
+
 		if(skin == null)
-			skin = skeletonDataAsset.GetSkeletonData(true).DefaultSkin;
+			skin = data.DefaultSkin;
+			
+		if(skin == null)
+			skin = data.Skins[0];
 
 		anim.Reset();
 		
