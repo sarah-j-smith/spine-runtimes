@@ -157,7 +157,7 @@ static int equals (Str* str, const char* other) {
 }
 
 static int toInt (Str* str) {
-	return (int)(strtol(str->begin, (char**)&str->end, 10));
+	return (int)strtol(str->begin, (char**)&str->end, 10);
 }
 
 static spAtlas* abortAtlas (spAtlas* self) {
@@ -307,7 +307,7 @@ spAtlas* spAtlas_createFromFile (const char* path, void* rendererObject) {
 	const char* lastBackwardSlash = strrchr(path, '\\');
 	const char* lastSlash = lastForwardSlash > lastBackwardSlash ? lastForwardSlash : lastBackwardSlash;
 	if (lastSlash == path) lastSlash++; /* Never drop starting slash. */
-	dirLength = lastSlash ? (int)lastSlash - (int)path : 0;
+	dirLength = (int)(lastSlash ? lastSlash - path : 0);
 	dir = MALLOC(char, dirLength + 1);
 	memcpy(dir, path, dirLength);
 	dir[dirLength] = '\0';
